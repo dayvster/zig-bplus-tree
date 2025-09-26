@@ -1,22 +1,23 @@
 const std = @import("std");
 
-/// Node struct is now outside the generic function for easier self-referencing
+/// Returns a B+ tree node type for the given key/value type and degree.
 pub fn Node(comptime T: type, comptime DEGREE: usize) type {
     return struct {
         is_leaf: bool,
         keys: [2 * DEGREE - 1]T,
         children: [2 * DEGREE]*Node(T, DEGREE),
-        values: [2 * DEGREE - 1]?T, // Only used for leaves
-        n: usize, // Number of keys
-        next: ?*Node(T, DEGREE), // For leaf chaining
+        /// Only used for leaves: stores values for each key.
+        values: [2 * DEGREE - 1]?T,
+        /// Number of keys in this node.
+        n: usize,
+        /// For leaf chaining (linked list of leaves).
+        next: ?*Node(T, DEGREE),
     };
 }
 
-/// A generic, robust B+ tree implementation.
+/// Returns a robust, generic B+ tree type for the given key/value type and degree.
 /// Usage: var tree = BPlusTree(i32, 4).init(allocator);
-/// Supports insert, search, and remove.
 pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
-    // removed unused Self
     const Allocator = std.mem.Allocator;
 
     const Error = error{
@@ -31,6 +32,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         root: ?NodePtr,
         allocator: *const Allocator,
 
+        /// Initialize a new B+ tree with the given allocator.
         pub fn init(allocator: *const Allocator) @This() {
             return @This(){
                 .root = null,
@@ -38,6 +40,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             };
         }
 
+        /// Free all memory used by the tree and its nodes.
         pub fn deinit(self: *@This()) void {
             if (self.root) |r| {
                 self.freeNode(r);
@@ -45,6 +48,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
         pub const ErrorSet = Error;
 
+        /// Recursively free a node and its children.
         fn freeNode(self: *@This(), node: NodePtr) void {
             if (!node.is_leaf) {
                 for (node.children[0 .. node.n + 1]) |child| {
@@ -54,6 +58,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             self.allocator.destroy(node);
         }
 
+        /// Search for a key in the tree. Returns the value if found, else null.
         pub fn search(self: *@This(), key: T) ?T {
             if (self.root) |r| {
                 return self.searchNode(r, key);
@@ -61,6 +66,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             return null;
         }
 
+        /// Internal recursive search helper.
         fn searchNode(self: *@This(), node: NodePtr, key: T) ?T {
             var i: usize = 0;
             while (i < node.n and key > node.keys[i]) : (i += 1) {}
@@ -79,6 +85,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             }
         }
 
+        /// Insert a key-value pair into the tree. Returns error on duplicate key or OOM.
         pub fn insert(self: *@This(), key: T, value: T) Error!void {
             if (self.root == null) {
                 self.root = try self.createNode(true);
@@ -96,6 +103,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             try self.insertNonFull(self.root.?, key, value);
         }
 
+        /// Insert a key-value pair into a node that is not full.
         fn insertNonFull(self: *@This(), node: NodePtr, key: T, value: T) Error!void {
             var i = node.n;
             if (node.is_leaf) {
@@ -118,8 +126,9 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             }
         }
 
+        /// Split a full child node and update the parent.
+        /// Parent must never be a leaf in a B+ tree.
         fn splitChild(self: *@This(), parent: NodePtr, i: usize, y: NodePtr) Error!void {
-            // Parent must never be a leaf in a B+ tree
             std.debug.assert(!parent.is_leaf);
             var z = try self.createNode(y.is_leaf);
             var j: usize = 0;
@@ -169,6 +178,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             }
         }
 
+        /// Allocate and initialize a new node (leaf or internal).
         fn createNode(self: *@This(), is_leaf: bool) !NodePtr {
             const node = try self.allocator.create(Node(T, DEGREE));
             node.* = Node(T, DEGREE){
