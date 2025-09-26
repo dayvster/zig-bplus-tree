@@ -43,25 +43,35 @@ Example (order 4):
 ## Installation
 
 ### With `zig fetch` (recommended)
-Add this repo to your `build.zig.zon` dependencies:
-```jsonc
-// build.zig.zon
+
+Fetch and add this repo as a dependency:
+
+```sh
+zig fetch https://github.com/dayvster/zig-bplus-tree
+```
+
+Add to your `build.zig.zon` dependencies:
+
+```json
 {
-    // ...
-    .dependencies = .{
-        .bplustree = .{
-            .url = "https://github.com/dayvster/zig-bplus-tree/archive/refs/heads/main.zip",
-        },
-    },
+  "dependencies": {
+    "bplustree": {
+      "url": "https://github.com/dayvster/zig-bplus-tree/archive/refs/heads/main.zip"
+    }
+  }
 }
 ```
+
 Then in your `build.zig`:
+
 ```zig
 const bplustree_mod = b.dependency("bplustree", .{}).module("bplustree");
 // ...
 .imports = &.{ .{ .name = "bplustree", .module = bplustree_mod } },
 ```
+
 And in your code:
+
 ```zig
 const BPlusTree = @import("bplustree").BPlusTree(i32, 4);
 ```
