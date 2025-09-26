@@ -2,10 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Zig](https://img.shields.io/badge/zig-0.15%2B-f7a41d?logo=zig)](https://ziglang.org/)
-[![Lines of Code](https://tokei.rs/b1/github.com/YOUR_GITHUB/YOUR_REPO?category=code)](https://github.com/YOUR_GITHUB/YOUR_REPO)
-[![Last Commit](https://img.shields.io/github/last-commit/YOUR_GITHUB/YOUR_REPO)](https://github.com/YOUR_GITHUB/YOUR_REPO)
-[![Repo Size](https://img.shields.io/github/repo-size/YOUR_GITHUB/YOUR_REPO)](https://github.com/YOUR_GITHUB/YOUR_REPO)
-[![Issues](https://img.shields.io/github/issues/YOUR_GITHUB/YOUR_REPO)](https://github.com/YOUR_GITHUB/YOUR_REPO)
+[![Lines of Code](https://tokei.rs/b1/github.com/dayvster/zig-bplus-tree?category=code)](https://github.com/dayvster/zig-bplus-tree)
+[![Last Commit](https://img.shields.io/github/last-commit/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree)
+[![Repo Size](https://img.shields.io/github/repo-size/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree)
+[![Issues](https://img.shields.io/github/issues/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree/issues)
 
 ---
 
@@ -50,7 +50,7 @@ Add this repo to your `build.zig.zon` dependencies:
     // ...
     .dependencies = .{
         .bplustree = .{
-            .url = "https://github.com/YOUR_GITHUB/YOUR_REPO/archive/refs/heads/main.zip",
+            .url = "https://github.com/dayvster/zig-bplus-tree/archive/refs/heads/main.zip",
         },
     },
 }
