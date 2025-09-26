@@ -6,11 +6,8 @@ pub fn Node(comptime T: type, comptime DEGREE: usize) type {
         is_leaf: bool,
         keys: [2 * DEGREE - 1]T,
         children: [2 * DEGREE]*Node(T, DEGREE),
-        /// Only used for leaves: stores values for each key.
         values: [2 * DEGREE - 1]?T,
-        /// Number of keys in this node.
         n: usize,
-        /// For leaf chaining (linked list of leaves).
         next: ?*Node(T, DEGREE),
     };
 }
@@ -29,8 +26,41 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
     const NodePtr = *Node(T, DEGREE);
 
     const Tree = struct {
+        /// Iterator for in-order traversal of the B+ tree.
+        pub const Iterator = struct {
+            current: ?NodePtr,
+            idx: usize,
+
+            /// Returns the next key-value pair, or null if done.
+            pub fn next(self: *@This()) ?struct { key: T, value: T } {
+                if (self.current) |node| {
+                    if (self.idx < node.n) {
+                        const result = .{ .key = node.keys[self.idx], .value = node.values[self.idx].? };
+                        self.idx += 1;
+                        return result;
+                    } else if (node.next) |next_node| {
+                        self.current = next_node;
+                        self.idx = 0;
+                        return self.next();
+                    }
+                }
+                return null;
+            }
+        };
         root: ?NodePtr,
         allocator: *const Allocator,
+        /// Returns an iterator for in-order traversal.
+        pub fn iter(self: *@This()) Iterator {
+            var node = self.root;
+            // Find leftmost leaf
+            while (node != null and !node.?.is_leaf) {
+                node = node.?.children[0];
+            }
+            return Iterator{
+                .current = node,
+                .idx = 0,
+            };
+        }
 
         /// Initialize a new B+ tree with the given allocator.
         pub fn init(allocator: *const Allocator) @This() {
@@ -192,7 +222,149 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             return node;
         }
 
-        // TODO: Implement remove, iter, and more robust error handling.
+        /// Remove a key from the tree. Returns error if not found.
+        pub fn remove(self: *@This(), key: T) Error!void {
+            if (self.root == null) return Error.NotFound;
+            try self.removeNode(self.root.?, key);
+            // If root is empty and not a leaf, collapse tree height
+            if (self.root.?.n == 0 and !self.root.?.is_leaf) {
+                self.root = self.root.?.children[0];
+            }
+            // If root is empty and is a leaf, tree is now empty
+            if (self.root.?.n == 0 and self.root.?.is_leaf) {
+                self.allocator.destroy(self.root.?);
+                self.root = null;
+            }
+        }
+
+        /// Internal recursive remove helper.
+        fn removeNode(self: *@This(), node: NodePtr, key: T) Error!void {
+            var i: usize = 0;
+            while (i < node.n and key > node.keys[i]) : (i += 1) {}
+            if (node.is_leaf) {
+                if (i < node.n and node.keys[i] == key) {
+                    // Remove key and value from leaf
+                    var j = i;
+                    while (j + 1 < node.n) : (j += 1) {
+                        node.keys[j] = node.keys[j + 1];
+                        node.values[j] = node.values[j + 1];
+                    }
+                    node.n -= 1;
+                    return;
+                } else {
+                    return Error.NotFound;
+                }
+            } else {
+                // Internal node: find child to recurse into
+                var child = node.children[i];
+                // If child has minimum keys, try to rebalance
+                if (child.n == DEGREE - 1) {
+                    // Try left sibling
+                    if (i > 0 and node.children[i - 1].n >= DEGREE) {
+                        self.borrowFromPrev(i, node);
+                    }
+                    // Try right sibling
+                    else if (i < node.n and node.children[i + 1].n >= DEGREE) {
+                        self.borrowFromNext(i, node);
+                    }
+                    // Merge with sibling
+                    else {
+                        if (i < node.n) {
+                            self.merge(node, i);
+                            child = node.children[i];
+                        } else {
+                            self.merge(node, i - 1);
+                            child = node.children[i - 1];
+                        }
+                    }
+                }
+                return self.removeNode(child, key);
+            }
+        }
+
+        /// Borrow a key from the previous sibling
+        fn borrowFromPrev(self: *@This(), idx: usize, _parent: NodePtr) void {
+            _ = self; // autofix
+            const child = _parent.children[idx];
+            const sibling = _parent.children[idx - 1];
+            // Shift child keys/values right
+            var j = child.n;
+            while (j > 0) : (j -= 1) {
+                child.keys[j] = child.keys[j - 1];
+                child.values[j] = child.values[j - 1];
+            }
+            if (!child.is_leaf) {
+                var k = child.n + 1;
+                while (k > 0) : (k -= 1) {
+                    child.children[k] = child.children[k - 1];
+                }
+                child.children[0] = sibling.children[sibling.n];
+            }
+            child.keys[0] = _parent.keys[idx - 1];
+            if (child.is_leaf) child.values[0] = sibling.values[sibling.n - 1];
+            _parent.keys[idx - 1] = sibling.keys[sibling.n - 1];
+            child.n += 1;
+            sibling.n -= 1;
+        }
+
+        /// Borrow a key from the next sibling
+        fn borrowFromNext(self: *@This(), idx: usize, _parent: NodePtr) void {
+            _ = self; // autofix
+            const child = _parent.children[idx];
+            const sibling = _parent.children[idx + 1];
+            child.keys[child.n] = _parent.keys[idx];
+            if (child.is_leaf) child.values[child.n] = sibling.values[0];
+            if (!child.is_leaf) {
+                child.children[child.n + 1] = sibling.children[0];
+            }
+            _parent.keys[idx] = sibling.keys[0];
+            var j: usize = 0;
+            while (j + 1 < sibling.n) : (j += 1) {
+                sibling.keys[j] = sibling.keys[j + 1];
+                sibling.values[j] = sibling.values[j + 1];
+            }
+            if (!sibling.is_leaf) {
+                var k: usize = 0;
+                while (k + 1 <= sibling.n) : (k += 1) {
+                    sibling.children[k] = sibling.children[k + 1];
+                }
+            }
+            child.n += 1;
+            sibling.n -= 1;
+        }
+
+        /// Merge child at idx with its right sibling
+        fn merge(self: *@This(), node: NodePtr, idx: usize) void {
+            const child = node.children[idx];
+            const sibling = node.children[idx + 1];
+            // For internal nodes, bring down separator key
+            if (!child.is_leaf) {
+                child.keys[DEGREE - 1] = node.keys[idx];
+            }
+            var j: usize = 0;
+            while (j < sibling.n) : (j += 1) {
+                child.keys[child.n + j] = sibling.keys[j];
+                if (child.is_leaf) child.values[child.n + j] = sibling.values[j];
+            }
+            if (!child.is_leaf) {
+                var k: usize = 0;
+                while (k <= sibling.n) : (k += 1) {
+                    child.children[child.n + k] = sibling.children[k];
+                }
+            }
+            if (child.is_leaf) {
+                child.next = sibling.next;
+            }
+            child.n += sibling.n;
+            // Shift keys/children in parent
+            var k = idx;
+            while (k + 1 < node.n) : (k += 1) {
+                node.keys[k] = node.keys[k + 1];
+                node.children[k + 1] = node.children[k + 2];
+            }
+            node.n -= 1;
+            self.allocator.destroy(sibling);
+        }
     };
 
     return Tree;
