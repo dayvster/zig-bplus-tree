@@ -1,20 +1,20 @@
 const std = @import("std");
 
 /// Returns a B+ tree node type for the given key/value type and degree.
-pub fn Node(comptime T: type, comptime DEGREE: usize) type {
+pub fn Node(comptime K: type, comptime V: type, comptime DEGREE: usize) type {
     return struct {
         is_leaf: bool,
-        keys: [2 * DEGREE - 1]T,
-        children: [2 * DEGREE]*Node(T, DEGREE),
-        values: [2 * DEGREE - 1]?T,
+        keys: [2 * DEGREE - 1]K,
+        children: [2 * DEGREE]*Node(K, V, DEGREE),
+        values: [2 * DEGREE - 1]?V,
         n: usize,
-        next: ?*Node(T, DEGREE),
+        next: ?*Node(K, V, DEGREE),
     };
 }
 
 /// Returns a robust, generic B+ tree type for the given key/value type and degree.
 /// Usage: var tree = BPlusTree(i32, 4).init(allocator);
-pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
+pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) type {
     const Allocator = std.mem.Allocator;
 
     const Error = error{
@@ -23,7 +23,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         DuplicateKey,
     };
 
-    const NodePtr = *Node(T, DEGREE);
+    const NodePtr = *Node(K, V, DEGREE);
 
     const Tree = struct {
         /// Iterator for in-order traversal of the B+ tree.
@@ -32,7 +32,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
             idx: usize,
 
             /// Returns the next key-value pair, or null if done.
-            pub fn next(self: *@This()) ?struct { key: T, value: T } {
+            pub fn next(self: *@This()) ?struct { key: K, value: V } {
                 if (self.current) |node| {
                     if (self.idx < node.n) {
                         const result = .{ .key = node.keys[self.idx], .value = node.values[self.idx].? };
@@ -89,7 +89,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
 
         /// Search for a key in the tree. Returns the value if found, else null.
-        pub fn search(self: *@This(), key: T) ?T {
+        pub fn search(self: *@This(), key: K) ?V {
             if (self.root) |r| {
                 return self.searchNode(r, key);
             }
@@ -97,7 +97,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
 
         /// Internal recursive search helper.
-        fn searchNode(self: *@This(), node: NodePtr, key: T) ?T {
+        fn searchNode(self: *@This(), node: NodePtr, key: K) ?V {
             var i: usize = 0;
             while (i < node.n and key > node.keys[i]) : (i += 1) {}
             if (node.is_leaf) {
@@ -116,7 +116,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
 
         /// Insert a key-value pair into the tree. Returns error on duplicate key or OOM.
-        pub fn insert(self: *@This(), key: T, value: T) Error!void {
+        pub fn insert(self: *@This(), key: K, value: V) Error!void {
             if (self.root == null) {
                 self.root = try self.createNode(true);
                 self.root.?.keys[0] = key;
@@ -134,7 +134,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
 
         /// Insert a key-value pair into a node that is not full.
-        fn insertNonFull(self: *@This(), node: NodePtr, key: T, value: T) Error!void {
+        fn insertNonFull(self: *@This(), node: NodePtr, key: K, value: V) Error!void {
             var i = node.n;
             if (node.is_leaf) {
                 while (i > 0 and key < node.keys[i - 1]) : (i -= 1) {
@@ -210,8 +210,8 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
 
         /// Allocate and initialize a new node (leaf or internal).
         fn createNode(self: *@This(), is_leaf: bool) !NodePtr {
-            const node = try self.allocator.create(Node(T, DEGREE));
-            node.* = Node(T, DEGREE){
+            const node = try self.allocator.create(Node(K, V, DEGREE));
+            node.* = Node(K, V, DEGREE){
                 .is_leaf = is_leaf,
                 .keys = undefined,
                 .children = undefined,
@@ -223,7 +223,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
 
         /// Remove a key from the tree. Returns error if not found.
-        pub fn remove(self: *@This(), key: T) Error!void {
+        pub fn remove(self: *@This(), key: K) Error!void {
             if (self.root == null) return Error.NotFound;
             try self.removeNode(self.root.?, key);
             // If root is empty and not a leaf, collapse tree height
@@ -238,7 +238,7 @@ pub fn BPlusTree(comptime T: type, comptime DEGREE: usize) type {
         }
 
         /// Internal recursive remove helper.
-        fn removeNode(self: *@This(), node: NodePtr, key: T) Error!void {
+        fn removeNode(self: *@This(), node: NodePtr, key: K) Error!void {
             var i: usize = 0;
             while (i < node.n and key > node.keys[i]) : (i += 1) {}
             if (node.is_leaf) {

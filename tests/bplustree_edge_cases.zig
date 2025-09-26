@@ -2,7 +2,7 @@ test "tests debug msg" {
     @import("std").debug.print("Ignore this message, this is only here to communicate that tests are running!\n", .{});
 }
 const std = @import("std");
-const bpt = @import("bplustree").BPlusTree(i32, 4);
+const bpt = @import("bplustree").BPlusTree(i32, i32, 4);
 
 test "duplicate key insert fails" {
     var tree = bpt.init(&std.testing.allocator);

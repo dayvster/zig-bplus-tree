@@ -1,5 +1,5 @@
 const std = @import("std");
-const bpt = @import("bplustree").BPlusTree(i32, 4);
+const bpt = @import("bplustree").BPlusTree(i32, i32, 4);
 
 pub fn main() !void {}
 
