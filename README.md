@@ -47,7 +47,7 @@ Example (order 4):
 Fetch and add this repo as a dependency:
 
 ```sh
-zig fetch https://github.com/dayvster/zig-bplus-tree
+zig fetch --save git+https://github.com/dayvster/zig-bplus-tree
 ```
 
 Add to your `build.zig.zon` dependencies:
