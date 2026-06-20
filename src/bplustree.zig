@@ -26,6 +26,8 @@ pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) typ
     const NodePtr = *Node(K, V, DEGREE);
 
     const Tree = struct {
+        /// The node type used by this tree.
+        pub const NodeType = Node(K, V, DEGREE);
         /// Iterator for in-order traversal of the B+ tree.
         pub const Iterator = struct {
             current: ?NodePtr,
