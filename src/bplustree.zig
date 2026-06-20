@@ -12,7 +12,9 @@ fn NodeType(comptime K: type, comptime V: type, comptime DEGREE: usize) type {
 }
 
 /// Returns a robust, generic B+ tree type for the given key/value type and degree.
-/// Usage: var tree = BPlusTree(i32, 4).init(allocator);
+/// Usage:
+///   var tree = BPlusTree(i32, i32, 4).init(allocator);       // uses MemoryPool (faster)
+///   var tree = BPlusTree(i32, i32, 4).initAlloc(allocator);  // uses allocator directly
 pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) type {
     return struct {
         pub const Error = error{
@@ -25,7 +27,13 @@ pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) typ
         const NodePtr = *Node;
         const Self = @This();
 
+        pub const Strategy = enum {
+            pool,
+            direct,
+        };
+
         root: ?NodePtr,
+        mode: Strategy,
         pool: std.heap.MemoryPool(Node),
         allocator: std.mem.Allocator,
 
@@ -41,10 +49,21 @@ pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) typ
             };
         }
 
-        /// Initialize a new B+ tree with the given allocator.
+        /// Initialize a new B+ tree with the given allocator, using a MemoryPool for node allocation (faster).
         pub fn init(gpa: std.mem.Allocator) Self {
             return Self{
                 .root = null,
+                .mode = .pool,
+                .pool = .empty,
+                .allocator = gpa,
+            };
+        }
+
+        /// Initialize a new B+ tree using the allocator directly (no MemoryPool overhead).
+        pub fn initAlloc(gpa: std.mem.Allocator) Self {
+            return Self{
+                .root = null,
+                .mode = .direct,
                 .pool = .empty,
                 .allocator = gpa,
             };
@@ -52,7 +71,10 @@ pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) typ
 
         /// Free all memory used by the tree and its nodes.
         pub fn deinit(self: *Self) void {
-            self.pool.deinit(self.allocator);
+            switch (self.mode) {
+                .pool => self.pool.deinit(self.allocator),
+                .direct => if (self.root) |r| self.freeNode(r),
+            }
             self.* = undefined;
         }
 
@@ -63,7 +85,10 @@ pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) typ
                     self.freeNode(child);
                 }
             }
-            self.pool.destroy(node);
+            switch (self.mode) {
+                .pool => self.pool.destroy(node),
+                .direct => self.allocator.destroy(node),
+            }
         }
 
         /// Search for a key in the tree. Returns the value if found, else null.
@@ -178,7 +203,10 @@ pub fn BPlusTree(comptime K: type, comptime V: type, comptime DEGREE: usize) typ
 
         /// Allocate and initialize a new node (leaf or internal).
         fn createNode(self: *Self, is_leaf: bool) !NodePtr {
-            const node = try self.pool.create(self.allocator);
+            const node = switch (self.mode) {
+                .pool => try self.pool.create(self.allocator),
+                .direct => try self.allocator.create(Node),
+            };
             node.* = Node{
                 .is_leaf = is_leaf,
                 .keys = undefined,

@@ -15,3 +15,17 @@ test "insert and search" {
     try std.testing.expect(tree.search(3) == 300);
     try std.testing.expect(tree.search(99) == null);
 }
+
+test "insert and search with direct allocator" {
+    var tree = bpt.initAlloc(std.testing.allocator);
+    defer tree.deinit();
+    try tree.insert(1, 100);
+    try tree.insert(2, 200);
+    try tree.insert(3, 300);
+    try std.testing.expect(tree.search(1) == 100);
+    try std.testing.expect(tree.search(2) == 200);
+    try std.testing.expect(tree.search(3) == 300);
+    try std.testing.expect(tree.search(99) == null);
+    try tree.remove(2);
+    try std.testing.expect(tree.search(2) == null);
+}
