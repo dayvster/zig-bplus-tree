@@ -1,5 +1,5 @@
 const std = @import("std");
-const bpt = @import("bplustree").BPlusTree(i32, 4);
+const bpt = @import("bplustree").BPlusTree(i32, i32, 4);
 
 pub fn main() !void {
     var tree = bpt.init(&std.heap.page_allocator);
@@ -32,7 +32,7 @@ pub fn main() !void {
     }
 }
 
-fn check_depth(node: *bpt.Node, depth: usize, leaf_depth: *?usize) bool {
+fn check_depth(node: *bpt.NodeType, depth: usize, leaf_depth: *?usize) bool {
     if (node.is_leaf) {
         if (leaf_depth.* == null) {
             leaf_depth.* = depth;
