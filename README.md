@@ -1,7 +1,7 @@
 # Zig B+ Tree
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Zig](https://img.shields.io/badge/zig-0.15%2B-f7a41d?logo=zig)](https://ziglang.org/)
+[![Zig](https://img.shields.io/badge/zig-0.17%2B-f7a41d?logo=zig)](https://ziglang.org/)
 [![Lines of Code](https://tokei.rs/b1/github.com/dayvster/zig-bplus-tree?category=code)](https://github.com/dayvster/zig-bplus-tree)
 [![Last Commit](https://img.shields.io/github/last-commit/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree)
 [![Repo Size](https://img.shields.io/github/repo-size/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree)
@@ -9,7 +9,7 @@
 
 ---
 
-A robust, generic, and idiomatic B+ tree implementation in Zig (0.15+). This package is designed for high performance, reliability, and ease of use—perfect for use as a dependency or as a learning resource for advanced data structures in Zig.
+A robust, generic, and idiomatic B+ tree implementation in Zig (0.17+). This package is designed for high performance, reliability, and ease of use—perfect for use as a dependency or as a learning resource for advanced data structures in Zig.
 
 ---
 
