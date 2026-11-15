@@ -2,131 +2,58 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Zig](https://img.shields.io/badge/zig-0.17%2B-f7a41d?logo=zig)](https://ziglang.org/)
-[![Lines of Code](https://tokei.rs/b1/github.com/dayvster/zig-bplus-tree?category=code)](https://github.com/dayvster/zig-bplus-tree)
-[![Last Commit](https://img.shields.io/github/last-commit/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree)
-[![Repo Size](https://img.shields.io/github/repo-size/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree)
-[![Issues](https://img.shields.io/github/issues/dayvster/zig-bplus-tree)](https://github.com/dayvster/zig-bplus-tree/issues)
 
----
-
-A robust, generic, and idiomatic B+ tree implementation in Zig (0.17+). This package is designed for high performance, reliability, and ease of use—perfect for use as a dependency or as a learning resource for advanced data structures in Zig.
-
----
+A robust, generic B+ tree implementation in Zig. High performance, memory-safe, and designed for both production use and learning.
 
 ## What is a B+ Tree?
-A B+ tree is a self-balancing tree data structure that maintains sorted data and allows fast insertions, deletions, and lookups. It is widely used in databases and filesystems.
 
-```
-Example (order 4):
-
-        [ 10 | 20 ]
-       /    |    \
-   [1 5 7] [12 15] [22 25 30]
-```
-- All values are stored in the leaves.
-- Internal nodes only store keys for navigation.
-- All leaves are linked for fast range/iteration queries.
-
----
+A self-balancing tree data structure for fast sorted access. All values live in leaf nodes; internal nodes store only keys for navigation. Used in databases and filesystems.
 
 ## Features
-- **Generic**: Works with any comparable key/value type.
-- **Self-balancing**: Maintains optimal height for fast operations.
-- **Fast**: O(log n) insert, search, and (future) remove.
-- **Range iteration**: (Planned) Efficient in-order traversal.
-- **Memory safe**: Uses Zig's allocator model.
-- **Tested**: Includes edge cases and stress tests.
-- **MIT licensed**: Free for any use.
 
----
+- **Generic**: Any comparable key/value type
+- **Self-balancing**: O(log n) operations
+- **Memory-safe**: Proper allocator patterns
+- **Tested**: Full test coverage
+- **MIT licensed**: Free for any use
 
 ## Installation
 
-### With `zig fetch` (recommended)
-
-Fetch and add this repo as a dependency:
-
+**With `zig fetch`:**
 ```sh
 zig fetch --save git+https://github.com/dayvster/zig-bplus-tree
 ```
 
-Add to your `build.zig.zon` dependencies:
-
+Add to `build.zig.zon`:
 ```json
-{
-  "dependencies": {
-    "bplustree": {
-      "url": "https://github.com/dayvster/zig-bplus-tree/archive/refs/heads/main.zip"
-    }
-  }
-}
+"bplustree": { "url": "https://github.com/dayvster/zig-bplus-tree/archive/refs/heads/main.zip" }
 ```
 
-Then in your `build.zig`:
+Then import: `const BPlusTree = @import("bplustree").BPlusTree(i32, 4);`
+
+**Or copy manually:** `src/bplustree.zig` to your project.
+
+## Usage
 
 ```zig
-const bplustree_mod = b.dependency("bplustree", .{}).module("bplustree");
-// ...
-.imports = &.{ .{ .name = "bplustree", .module = bplustree_mod } },
+var tree = BPlusTree(i32, i32, 4).init(allocator);  // MemoryPool strategy (faster)
+defer tree.deinit();
+
+try tree.insert(42, 100);
+const found = tree.search(42);
 ```
 
-And in your code:
+See `examples/` for more patterns and stress tests.
 
-```zig
-const BPlusTree = @import("bplustree").BPlusTree(i32, 4);
-```
+## Development
 
-### Manual install
-1. Download or clone this repository.
-2. Copy `src/bplustree.zig` into your project (e.g. `lib/bplustree.zig`).
-3. Import it directly:
-```zig
-const BPlusTree = @import("lib/bplustree.zig").BPlusTree(i32, 4);
-```
-
----
-
-## Usage Example
-```zig
-const std = @import("std");
-const BPlusTree = @import("bplustree").BPlusTree(i32, 4);
-
-pub fn main() !void {
-    var tree = BPlusTree.init(&std.heap.page_allocator);
-    defer tree.deinit();
-    try tree.insert(42, 100);
-    const found = tree.search(42);
-    std.debug.print("Found: {any}\n", .{found});
-}
-```
-
----
-
-## Examples
-See the `examples/` directory for more usage patterns, including:
-- Basic usage
-- Iteration
-- Self-balancing stress test
-
----
-
-## Tests
-Run all tests:
-```sh
-zig build test
-```
-
----
+- **Build**: `zig build`
+- **Test**: `zig build test`
+- **Format**: `zig fmt src/`
 
 ## Contributing
-Pull requests, bug reports, and feature requests are welcome! Please open an issue or PR on GitHub.
 
----
-
-## Support
-If you have questions or need help, open an issue or start a discussion on the repo.
-
----
+Issues and PRs welcome! Start a discussion or open an issue on GitHub.
 
 ## License
 MIT. See [LICENSE](./LICENSE).
